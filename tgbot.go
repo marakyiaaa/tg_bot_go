@@ -1,50 +1,28 @@
 package main
 
 import (
-	"fmt"
-	"github.com/PuerkitoBio/goquery"
 	"github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"log"
-	"net/http"
-	"strings"
 )
 
-func getHoroscope(sign string) (string, error) {
-	url := "https://horo.mail.ru/prediction/" + sign + "/today/"
-
-	res, err := http.Get(url)
-	if err != nil {
-		return "", err
-	}
-	defer res.Body.Close()
-
-	if res.StatusCode != 200 {
-		return "", fmt.Errorf("failed to fetch horoscope for %s", sign)
-	}
-
-	doc, err := goquery.NewDocumentFromReader(res.Body)
-	if err != nil {
-		return "", err
-	}
-
-	//horoscope := doc.Find(".article__item.article__item_html").Text()
-	//horoscope := doc.Find("#horoscope-aries p").Text()
-	//horoscope := doc.Find(".article__item.article__item_html p").First().Text()
-	horoscope := doc.Find("div.article__item.article__item_html > p:nth-of-type(1)").Text()
-	if horoscope == "" {
-		return "", fmt.Errorf("failed to find horoscope content")
-	}
-
-	return strings.TrimSpace(horoscope), nil
+var responses = map[string]string{
+	"Правила Школы":                    "https://applicant.21-school.ru/rules",
+	"Пригласить Гостя":                 "https://forms.yandex.ru/u/62dfba5e5921e8cbb5872e28/",
+	"Бронирование пространств":         "https://docs.google.com/spreadsheets/d/1Q5zNrtgrJ0Bfdil65lec2dR9DIFptmwwY8-9KqwuHoM/edit",
+	"Шаблон письма продления дедлайна": "Текст шаблона письма продления дедлайна",
+	"Реферальная программа":            "https://docs.google.com/spreadsheets/d/1G1yPQlZQIknS0xGEWnULyeEObu2IFpEfWbrimuhbeiQ/edit",
+	"Заморозка аккаунта":               "https://docs.yandex.ru/docs/view?url=ya-disk-public%3A%2F%2FyrxeeHGbVHBe8FaEiKlRWrT%2BAyWTCIFR30jRDdl8BCKJfHC5VOBZCCsR0JqfiOUqRmR%2F0fePyGwwW%2FWKW0%2FCEA%3D%3D&name=%D0%9F%D1%80%D0%B8%D0%BE%D1%81%D1%82%D0%B0%D0%BD%D0%BE%D0%B2%D0%BB%D0%B5%D0%BD%D0%B8%D0%B5%20%D0%BE%D0%B1%D1%83%D1%87%D0%B5%D0%BD%D0%B8%D1%8F.docx",
 }
 
 func main() {
-	bot, err := tgbotapi.NewBotAPI("7257975100:AAGqXX_TsAHAig-Pd6cHioZOJ4RBJNXqFII")
+	bot, err := tgbotapi.NewBotAPI("7257975100:AAGqXX_TsAHAigII")
 	if err != nil {
-		log.Panic(err) //!!
+		log.Panic(err)
 	}
+
 	bot.Debug = true
-	log.Printf("Account authorization %s", bot.Self.UserName)
+
+	log.Printf("Authorized on account %s", bot.Self.UserName)
 
 	u := tgbotapi.NewUpdate(0)
 	u.Timeout = 60
@@ -57,66 +35,37 @@ func main() {
 
 			var msg tgbotapi.MessageConfig
 
-			switch update.Message.Command() {
-			case "start":
-				msg = tgbotapi.NewMessage(update.Message.Chat.ID, "Welcome c: \n I`m your horoscope bot")
+			if responses, ok := responses[update.Message.Text]; ok {
+				msg = tgbotapi.NewMessage(update.Message.Chat.ID, responses)
+			} else {
 
-				keyboard := tgbotapi.NewReplyKeyboard(
-					tgbotapi.NewKeyboardButtonRow(
-						tgbotapi.NewKeyboardButton("virgo"),
-						tgbotapi.NewKeyboardButton("capricorn")),
-					tgbotapi.NewKeyboardButtonRow(
-						tgbotapi.NewKeyboardButton("taurus"),
-						tgbotapi.NewKeyboardButton("sagittarius")),
-					tgbotapi.NewKeyboardButtonRow(
-						tgbotapi.NewKeyboardButton("scorpio"),
-						tgbotapi.NewKeyboardButton("cancer")),
-					tgbotapi.NewKeyboardButtonRow(
-						tgbotapi.NewKeyboardButton("pisces"),
-						tgbotapi.NewKeyboardButton("leo")),
-					tgbotapi.NewKeyboardButtonRow(
-						tgbotapi.NewKeyboardButton("gemini"),
-						tgbotapi.NewKeyboardButton("libra")),
-					tgbotapi.NewKeyboardButtonRow(
-						tgbotapi.NewKeyboardButton("aquarius"),
-						tgbotapi.NewKeyboardButton("aries"),
-					),
-				)
-				msg.ReplyMarkup = keyboard
+				switch update.Message.Text {
+				case "/start":
+					msg = tgbotapi.NewMessage(update.Message.Chat.ID, "Welcome! I am your helper bot.")
 
-			case "help":
-				msg = tgbotapi.NewMessage(update.Message.Chat.ID, "I can help you with the following commands:\n/start - Start the bot\n/help - Display this help message")
-
-			default:
-				sign := strings.ToLower(update.Message.Text)
-				signMap := map[string]string{
-					"virgo":       "deva",
-					"capricorn":   "kozerog",
-					"taurus":      "telec",
-					"sagittarius": "strelec",
-					"scorpio":     "scorpion",
-					"cancer":      "rak",
-					"pisces":      "ryby",
-					"leo":         "lev",
-					"gemini":      "bliznecy",
-					"libra":       "vesy",
-					"aquarius":    "vodolej",
-					"aries":       "oven",
-				}
-				if zodiacSign, exists := signMap[sign]; exists {
-					horoscope, err := getHoroscope(zodiacSign)
-					if err != nil {
-						msg = tgbotapi.NewMessage(update.Message.Chat.ID, "Sorry, I couldn't fetch the horoscope.")
-					} else {
-						msg = tgbotapi.NewMessage(update.Message.Chat.ID, horoscope)
-					}
-				} else {
+					keyboard := tgbotapi.NewReplyKeyboard(
+						tgbotapi.NewKeyboardButtonRow(
+							tgbotapi.NewKeyboardButton("Правила Школы"),
+							tgbotapi.NewKeyboardButton("Пригласить Гостя")),
+						tgbotapi.NewKeyboardButtonRow(
+							tgbotapi.NewKeyboardButton("Бронирование пространств"),
+							tgbotapi.NewKeyboardButton("Шаблон письма продления дедлайна")),
+						tgbotapi.NewKeyboardButtonRow(
+							tgbotapi.NewKeyboardButton("Реферальная программа"),
+							tgbotapi.NewKeyboardButton("Заморозка аккаунта")),
+					)
+					msg.ReplyMarkup = keyboard
+				case "/help":
+					msg = tgbotapi.NewMessage(update.Message.Chat.ID, "I can help you with the following commands:\n/start - Start the bot\n/help - Display this help message")
+				default:
 					msg = tgbotapi.NewMessage(update.Message.Chat.ID, "I don't know that command")
 				}
 			}
+
 			bot.Send(msg)
 		}
 	}
 }
 
 //t.me/assistant215252_bot
+//"7257975100:AAGqXX_TsJNXqFII"
