@@ -22,6 +22,7 @@ func handleTemplateButton(update *tgbotapi.Update, bot *tgbotapi.BotAPI) {
 	case "awaitingNick":
 		userAnswers["nick"] = update.Message.Text
 		msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Краткое описание ситуации")
+		currentState = "awaitingDescription"
 		bot.Send(msg)
 	case "awaitingDescription":
 		userAnswers["description"] = update.Message.Text
